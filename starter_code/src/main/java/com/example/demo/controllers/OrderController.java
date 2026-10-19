@@ -16,36 +16,82 @@ import com.example.demo.model.persistence.UserOrder;
 import com.example.demo.model.persistence.repositories.CartRepository;
 import com.example.demo.model.persistence.repositories.OrderRepository;
 import com.example.demo.model.persistence.repositories.UserRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/order")
 public class OrderController {
-	
-	
+
+	private static final Logger logger =
+			LoggerFactory.getLogger(OrderController.class);
+
 	@Autowired
 	private UserRepository userRepository;
 	
 	@Autowired
 	private OrderRepository orderRepository;
-	
-	
+
+
 	@PostMapping("/submit/{username}")
-	public ResponseEntity<UserOrder> submit(@PathVariable String username) {
+	public ResponseEntity<UserOrder> submit(
+			@PathVariable String username,
+			Authentication authentication) {
+
+		if (!authentication.getName().equals(username)) {
+
+			logger.warn(
+					"Order request failure username={} authenticatedUser={} reason=forbidden",
+					username,
+					authentication.getName()
+			);
+
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+		}
+
 		User user = userRepository.findByUsername(username);
-		if(user == null) {
+
+		if (user == null) {
+
+			logger.warn(
+					"Order request failure username={} reason=user_not_found",
+					username
+			);
+
 			return ResponseEntity.notFound().build();
 		}
+
 		UserOrder order = UserOrder.createFromCart(user.getCart());
 		orderRepository.save(order);
+
+		logger.info(
+				"Order request success username={} orderId={}",
+				username,
+				order.getId()
+		);
+
+
 		return ResponseEntity.ok(order);
 	}
-	
+
 	@GetMapping("/history/{username}")
-	public ResponseEntity<List<UserOrder>> getOrdersForUser(@PathVariable String username) {
+	public ResponseEntity<List<UserOrder>> getOrdersForUser(
+			@PathVariable String username,
+			Authentication authentication) {
+
+		if (!authentication.getName().equals(username)) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+		}
+
 		User user = userRepository.findByUsername(username);
-		if(user == null) {
+
+		if (user == null) {
 			return ResponseEntity.notFound().build();
 		}
+
 		return ResponseEntity.ok(orderRepository.findByUser(user));
 	}
 }

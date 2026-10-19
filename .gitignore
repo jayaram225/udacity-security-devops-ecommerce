@@ -1,2 +1,8 @@
 .idea/
+*.iml
+
 /starter_code/target/
+/logs/
+
+*.log
+FULL_PROJECT_v1.0.txt

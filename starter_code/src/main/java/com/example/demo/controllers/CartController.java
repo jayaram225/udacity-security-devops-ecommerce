@@ -18,6 +18,7 @@ import com.example.demo.model.persistence.repositories.CartRepository;
 import com.example.demo.model.persistence.repositories.ItemRepository;
 import com.example.demo.model.persistence.repositories.UserRepository;
 import com.example.demo.model.requests.ModifyCartRequest;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -33,7 +34,13 @@ public class CartController {
 	private ItemRepository itemRepository;
 	
 	@PostMapping("/addToCart")
-	public ResponseEntity<Cart> addTocart(@RequestBody ModifyCartRequest request) {
+	public ResponseEntity<Cart> addTocart(
+			@RequestBody ModifyCartRequest request,
+			Authentication authentication) {
+
+		if (!authentication.getName().equals(request.getUsername())) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+		}
 		User user = userRepository.findByUsername(request.getUsername());
 		if(user == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -48,21 +55,35 @@ public class CartController {
 		cartRepository.save(cart);
 		return ResponseEntity.ok(cart);
 	}
-	
+
 	@PostMapping("/removeFromCart")
-	public ResponseEntity<Cart> removeFromcart(@RequestBody ModifyCartRequest request) {
+	public ResponseEntity<Cart> removeFromcart(
+			@RequestBody ModifyCartRequest request,
+			Authentication authentication) {
+
+		if (!authentication.getName().equals(request.getUsername())) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+		}
+
 		User user = userRepository.findByUsername(request.getUsername());
-		if(user == null) {
+
+		if (user == null) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 		}
+
 		Optional<Item> item = itemRepository.findById(request.getItemId());
-		if(!item.isPresent()) {
+
+		if (!item.isPresent()) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 		}
+
 		Cart cart = user.getCart();
+
 		IntStream.range(0, request.getQuantity())
-			.forEach(i -> cart.removeItem(item.get()));
+				.forEach(i -> cart.removeItem(item.get()));
+
 		cartRepository.save(cart);
+
 		return ResponseEntity.ok(cart);
 	}
 		
